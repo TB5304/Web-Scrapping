@@ -14,4 +14,3 @@ Steps Include:
 1. Opening Given Site With Set Of Username And Password
 2. For Each User Id, Finding Their Holding Records And Scrapping
 3. Storing That Data In Structured Format In Pandas Series.
-https://github.com/TB5304/Web-Scrapping
