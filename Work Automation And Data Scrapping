@@ -1,0 +1,144 @@
+from selenium import webdriver
+from selenium.webdriver.common.by import By
+import pandas as pd
+import requests
+from bs4 import BeautifulSoup
+import pandas as pd
+
+
+driver = webdriver.Chrome()
+driver.get('https://hisabkitab.lse.co.in/Account/Login')
+driver.find_element_by_name("UserName").send_keys('SUBSUD197')
+driver.find_element_by_name("Password").send_keys('123456')
+driver.find_element_by_xpath('//button[@type="submit"]').click()
+#driver.find_element_by_css_selector("span[class='menu-arrow']").click()
+driver.find_element(By.LINK_TEXT, 'Holding')
+driver.get('https://hisabkitab.lse.co.in/Home/Holding')
+driver.find_element_by_xpath('//button[@type="submit"]').click()
+
+
+# In[24]:
+
+
+url='https://hisabkitab.lse.co.in/Home/Holding'
+page = requests.get(url)
+soup = BeautifulSoup(page.content, 'lxml')
+
+
+# In[25]:
+
+
+########################
+#/*import urllib.request
+#from pprint import pprint
+#from html_table_parser.parser import HTMLTableParser
+#import pandas as pd
+#def url_get_contents(url):
+#    req = urllib.request.Request(url=url)
+#    f = urllib.request.urlopen(req)
+#    return f.read()
+ 
+# defining the html contents of a URL.
+#xhtml = url_get_contents(url).decode('utf-8')
+ 
+# Defining the HTMLTableParser object
+#p = HTMLTableParser()
+ 
+# feeding the html contents in the
+# HTMLTableParser object
+#p.feed(xhtml)
+ 
+# Now finally obtaining the data of
+# the table required
+#pprint(p.tables[1])
+ 
+# converting the parsed data to
+# dataframe
+#print("\n\nPANDAS DATAFRAME\n")
+#print(pd.DataFrame(p.tables[1]))
+#$#########
+
+
+# In[26]:
+
+
+rows = len (driver.find_elements_by_xpath("//*[@id='datatable']/tbody/tr"))
+cols = len (driver.find_elements_by_xpath("//*[@id='datatable']/tbody/tr[2]/td"))
+
+
+# In[27]:
+
+
+rows
+
+
+# In[28]:
+
+
+cols
+
+
+# In[29]:
+
+
+final_list=[]
+
+
+# In[30]:
+
+
+tr_inc=-1
+tc_inc=-1
+
+
+# In[31]:
+
+
+before_XPath = "//*[@id='datatable']/tbody/tr["
+aftertd_XPath = "]/td["
+aftertr_XPath = "]"
+fun='//*[@id="wrapper"]/div[4]/div/div/div/div/div[2]/div/h4'
+cell = driver.find_element_by_xpath(fun).text
+xlist=cell.split(" ")
+ac_id=xlist[xlist.index('ID:')+1]
+ac_id    
+
+
+# In[32]:
+
+
+for t_row in range(2, (rows + 1)):
+            TWORK=[]
+            for t_column in range(1, (cols + 1)):
+                tc_inc+=1
+                FinalXPath = before_XPath + str(t_row) + aftertd_XPath + str(t_column) + aftertr_XPath
+                cell_text = driver.find_element_by_xpath(FinalXPath).text
+                TWORK.append(cell_text)
+            final_list.append(TWORK)
+
+
+# In[33]:
+
+
+print('Account ID   |   Beneficiary |   Margin Pledge |   DP |   Total | Category   |    Buy Avg  |   Notional PNL ')
+for i in final_list:
+    print(f'{ac_id}       | {i[2]}             | {i[3]}|      {i[4]}|  {i[5]} | {i[9]} | {i[13]} |  {i[14]} ') 
+
+
+# In[ ]:
+
+
+
+
+
+# In[60]:
+
+
+
+
+
+# In[ ]:
+
+
+
+
