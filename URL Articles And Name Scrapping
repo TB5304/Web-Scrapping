@@ -1,1 +1,217 @@
+import pandas as pd
+from selenium import webdriver
+from selenium.webdriver.common.by import By
+import numpy as np
+#################################################################################################
+#Importing Stop Words In One Place In Form of Dictonary To Make It Faster
+# Stop Words Are Already Stored In Root Location
+AnsMatrix=[]
+Stop=[]
+filename = 'StopWords_Auditor.txt'
+stopword={}
+stopword['']=1
+data = np.loadtxt(filename, delimiter=',', skiprows=0, dtype=str)
+for i in data:
+    stopword[i.lower()]=1
+data2= np.loadtxt("StopWords_Currencies.txt", delimiter=r' |', skiprows=0, dtype=str)
+for i in data2:
+    for j in i:
+        stopword[j.strip().lower()]=1
+data= np.loadtxt("StopWords_DatesandNumbers.txt", delimiter=r' |', skiprows=0, dtype=str)
+for i in data:
+    stopword[i]=1 
+data= np.loadtxt("StopWords_Generic.txt", delimiter=r' |', skiprows=0, dtype=str)
+for i in data:
+    stopword[i.lower()]=1 
+data= np.loadtxt("StopWords_Geographic.txt", delimiter=r' |', skiprows=0, dtype=str)
+for i in data:
+    stopword[i.lower()]=1 
+data= np.loadtxt("StopWords_GenericLong.txt", delimiter=r' |', skiprows=0, dtype=str)
+for i in data:
+    stopword[i.lower()]=1 
+data= np.loadtxt("StopWords_Names.txt", delimiter=r' |', skiprows=0, dtype=str)
+for i in data:
+    stopword[i.lower()]=1 
+##############################################################################################
+#Creating Dictonary For Positive And Negative Words
+data = np.loadtxt('positive-words.txt', delimiter=r' ,', skiprows=0, dtype=str)
+positive={}
+for i in data:
+    positive[i]=1
+data = np.loadtxt('negative-words.txt', delimiter=r', ', skiprows=0, dtype=str)
+negative={}
+for i in data:
+    negative[i]=1
+##############################################################################################
+
+
+x=pd.read_excel('Input.xlsx')
+urlvalues=x['URL']
+#for j in urlvalues:
+
+###############################################################################################    
+def getresult(url):
+    temp=[]
+    temp.append(url)
+    driver= webdriver.Chrome()
+    driver.get(url)
+    Title = driver.find_element_by_xpath('/html/body/div[6]/article/div[1]/div[1]/div[2]/div[2]/header/h1').text
+    Body= driver.find_element_by_xpath('/html/body/div[6]/article/div[2]/div/div[1]/div/div[1]').text
+    Body=Body.split("\n")
+    Bodyyy=Body[1:]
+    Bodyx=str(' '.join(Bodyyy))
+    #Seperating Body Into Sentences
+    slist=Bodyx.split(".")[:-1]
+    no_of_sentence=len(slist)
+    #print(f'No Of Sentence={ no_of_sentence }')
+    #Seperating Sentences Into Words
+    wlist=[]
+    for i in slist:
+        xt=i.lower().split(r" ")
+        wlist.append(xt)    
+    tokenized_list=[]
+    untokenized_list=[]    
+    for i in wlist:
+        for j in i:
+            xm=j
+            if ('“' in xm) or( '”' in xm) or (',' in xm) or  (')' in xm) or  ('(' in xm):
+                xm=xm.replace('“','')
+                xm=xm.replace('”','')
+                xm=xm.replace(',','')
+                xm=xm.replace('(','')
+                xm=xm.replace(')','')
+                if xm != '':
+                    untokenized_list.append(xm)
+            elif '-' in j:
+                xxx=xm.split("-",2)
+                untokenized_list.append(xxx[0])            
+                untokenized_list.append(xxx[1])
+            elif j!='':
+                untokenized_list.append(j)
+    #print(f'No Of Total Words including StopWords={len(untokenized_list)}')
+    #ClearWord=len(tokenized_list)
+    UnClearWord=len(untokenized_list)
+    #print(UnClearWord)
+    #print(untokenized_list)
+    #Cleaning Stop Words From 
+    for i in untokenized_list:
+        if i not in stopword:
+            tokenized_list.append(i)
+    #print(f'No Of Tokenized Words={len(tokenized_list)}')
+    #Calculating Postive And Negative Score Pronouns
+    pscore=0
+    nscore=0
+    ppronouns=0
+    for i in tokenized_list:
+        if i in positive:
+            pscore+=1 
+        elif i in negative:
+            nscore+=1   
+    #print(f'Positive Score={(pscore)}')
+    #print(f'Negative Score={(nscore)}')
+    temp.append(pscore)
+    temp.append(nscore)
+    for i in untokenized_list:
+         if i in ['I','i','we','my','ours','us']:
+            ppronouns+=1 
+    #print(f'Pronouns Score={(ppronouns)}')
+    #Calculating Polarity of The Score
+    polarity=(pscore-nscore)/(pscore+nscore)+0.000001
+    #print(f'Polarity Score={(polarity)}')
+    temp.append(polarity)
+    #Calculating Subjectivity Score
+    sscore=(pscore+nscore)/len(tokenized_list)+0.000001
+    #print(f'Subjectivity Score={(sscore)}')
+    temp.append(sscore)
+    #Taking Count Of No Of Words After Cleaning Process
+    AvgSLength=len(tokenized_list)/no_of_sentence
+    #print(f'Average Sentence Length={(AvgSLength)}')
+    temp.append(AvgSLength)
+    #Finding Complex Words
+    cwords=0
+    sumofchars=0
+    syllable=0
+    for i in tokenized_list:
+        cval=0
+        flag=1
+        sumofchars+=len(i)
+        for j in i:
+            if j in ['a','e','i','o','u']:
+                cval+=1 
+                syllable+=1
+        if j[-2:]=='es' or j[-2:]=='ed':
+            flag=0
+        if flag==1 and cval>1:
+            cwords+=1
+    #print(f'No Of Complex Words={(cwords)}')
+    #Percentage Of Complex Words
+    pcomplex=cwords/len(tokenized_list)
+    #print(f'% Of Complex Words={(pcomplex)}')
+    temp.append(pcomplex)
+    #Fog Index
+    findex=0.4*(AvgSLength+pcomplex)    
+    #print(f'Fog index={(findex)}')
+    temp.append(findex)
+    #AverageWordLength
+    avgwl=sumofchars/len(tokenized_list)
+    #print(f'Average Word Length={(avgwl)}')
+    temp.append(AvgSLength)
+    temp.append(cwords)
+    temp.append(len(tokenized_list))
+    temp.append(syllable/len(tokenized_list))
+    temp.append(ppronouns)
+    temp.append(avgwl)
+    driver.close()
+    return temp
+###################################################################################################
+count=0
+from selenium.common.exceptions import NoSuchElementException
+for i in urlvalues:
+    count+=1
+    try:        
+        x=getresult(i)
+        AnsMatrix.append(x)        
+        print(f'Completed Task For {count}th URL')
+    except NoSuchElementException:        
+        AnsMatrix.append(['Web page Not Found'])
+        print(f'NoSuchElement Exception For {count}th URL')
+    except ZeroDivisionError:
+        AnsMatrix.append(['Calculation Error'])
+        print(f'Division By Zero Exception For {count}th URL')
+print(x)
+
+
+# In[2]:
+
+
+AnsMatrix
+
+
+# In[3]:
+
+
+FinalMatrix=[]
+FinalMatrix.append(['URL','POSITIVE SCORE','NEGATIVE SCORE','POLARITY SCORE','SUBJECTIVITY SCORE','AVG SENTENCE LENGTH','PERCENTAGE OF COMPLEX WORDS','FOG INDEX','AVG NUMBER OF WORDS PER SENTENCE','COMPLEX WORD COUNT','WORD COUNT','SYLLABLE PER WORD','PERSONAL PRONOUNS','AVG WORD LENGTH'])
+
+
+# In[4]:
+
+
+for i in AnsMatrix:
+    FinalMatrix.append(i)
+
+
+# In[5]:
+
+
+np.savetxt("FOutPutFile.csv", 
+           FinalMatrix,
+           delimiter =", ", 
+           fmt ='% s')
+
+
+# In[ ]:
+
+
+
 
